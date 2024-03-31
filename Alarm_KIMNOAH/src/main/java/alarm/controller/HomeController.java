@@ -58,7 +58,6 @@ public class HomeController {
         boolean skipHeader = true; // 첫 번째 줄이 헤더인지 여부를 나타내는 변수
         int pm10=0;
         int pm25=0;
-        int time=0;
         while ((line = br.readLine()) != null) {
             if (skipHeader) {
                 skipHeader = false;
@@ -70,28 +69,21 @@ public class HomeController {
             String[] lineArr = line.split(",", -1);
             aLine = Arrays.asList(lineArr);
             String[] day =lineArr[0].split(" ");
-           if(day[1].equals("01")) {
-        	   time=0;
-           }
-            time++;
-          
-
-            //시간당 평균 농도 데이터 추출
-            if(!aLine.get(3).isEmpty()||!aLine.get(4).isEmpty()){
-                 pm10 =(pm10+Integer.parseInt(aLine.get(3)))/time;
-                 pm25 = (pm25+Integer.parseInt(aLine.get(4)))/time;
-                 System.out.println(day[1]+time+"pm10 :"+pm10+"pm2.5 :"+pm25);
-            }else {
-            	 System.out.println("측정소(구별): " + aLine.get(1) + ", 경보 단계: 측정소 점검 , 발령 시간: " + aLine.get(0));
-                 AlertDTO ad= new AlertDTO();
-                 ad.setLocation(aLine.get(1));
-                 ad.setAlert_check("측정소 점검");
-                 ad.setTime( aLine.get(0));
-                 dao.getInsertAlert(ad);
-                 continue;
-            }
-          
-                
+            int time =Integer.parseInt(day[1]);
+            if (!aLine.get(3).isEmpty() && !aLine.get(4).isEmpty()) {
+                pm10 += Integer.parseInt(aLine.get(3));
+                pm25 += Integer.parseInt(aLine.get(4));
+                pm10 /= time;
+                pm25 /= time;
+            } else {
+                System.out.println("측정소(구별): " + aLine.get(1) + ", 경보 단계: 측정소 점검 , 발령 시간: " + aLine.get(0));
+                AlertDTO ad = new AlertDTO();
+                ad.setLocation(aLine.get(1));
+                ad.setAlert_check("측정소 점검");
+                ad.setTime(aLine.get(0));
+                dao.getInsertAlert(ad);
+                continue;
+            }   
             
             
             if (pm10 >= 150&&pm10 < 300) {  // 시간당 평균 농도가 150㎍/㎥ 이상인 경우
@@ -123,6 +115,8 @@ public class HomeController {
             if (mcount4 >= 2 && ccount3 <2 && ccount1 <2 && mcount2 <2) {
                 mGrade=4;
                 System.out.println("측정소(구별): " + aLine.get(1) + ", 경보 단계: " + mGrade  + ", 발령 시간: " + aLine.get(0)+time);
+                System.out.println(day[1] + time + "pm10 : " + pm10+" " +Integer.parseInt(aLine.get(3)) + " pm2.5 : " + pm25+" "+ Integer.parseInt(aLine.get(4)));
+
                 AlertDTO ad= new AlertDTO();
                 ad.setLocation(aLine.get(1));
                 ad.setGrade(mGrade);
@@ -133,6 +127,8 @@ public class HomeController {
            else if (mcount2 >= 2 && ccount1<2) {
                 mGrade=2;
                 System.out.println("측정소(구별): " + aLine.get(1) + ", 경보 단계: " + mGrade  + ", 발령 시간: " + aLine.get(0) +time);
+                System.out.println(day[1] + time + "pm10 : " + pm10+" " +Integer.parseInt(aLine.get(3)) + " pm2.5 : " + pm25+" "+ Integer.parseInt(aLine.get(4)));
+
                 AlertDTO ad= new AlertDTO();
                 ad.setLocation(aLine.get(1));
                 ad.setGrade(mGrade);
@@ -144,6 +140,8 @@ public class HomeController {
            else if (ccount3 >= 2 && mcount2 < 2 && ccount1 < 2) {
                 cGrade=3;
                 System.out.println("측정소(구별): " + aLine.get(1) + ", 경보 단계: " + cGrade  + ", 발령 시간: " + aLine.get(0)+time);
+                System.out.println(day[1] + time + "pm10 : " + pm10+" " +Integer.parseInt(aLine.get(3)) + " pm2.5 : " + pm25+" "+ Integer.parseInt(aLine.get(4)));
+
                 AlertDTO ad= new AlertDTO();
                 ad.setLocation(aLine.get(1));
                 ad.setGrade(cGrade);
@@ -154,6 +152,8 @@ public class HomeController {
           else if (ccount1 >= 2) {
                 cGrade=1;
                System.out.println("측정소(구별): " + aLine.get(1) + ", 경보 단계: " + cGrade  + ", 발령 시간: " + aLine.get(0)+time);
+               System.out.println(day[1] + time + "pm10 : " + pm10+" " +Integer.parseInt(aLine.get(3)) + " pm2.5 : " + pm25+" "+ Integer.parseInt(aLine.get(4)));
+
                AlertDTO ad= new AlertDTO();
                 ad.setLocation(aLine.get(1));
                 ad.setGrade(cGrade);
