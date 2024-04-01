@@ -1,8 +1,5 @@
 package alarm.controller;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,7 +33,8 @@ public class HomeController {
 	 */
 	@Autowired
 	private AlertDao dao;
-	
+	PrintWriter pw =null;
+	Socket socket =null;
 	@RequestMapping(value = "/", method = RequestMethod.GET)
 	public String home(Locale locale, Model model) throws Exception {
 		logger.info("Welcome home! The client locale is {}.", locale);
@@ -47,6 +45,11 @@ public class HomeController {
 		String formattedDate = dateFormat.format(date);
 		
 		model.addAttribute("serverTime", formattedDate );
+	
+		try {
+			socket=new Socket("localhost",5555);
+			pw=new PrintWriter(socket.getOutputStream());
+		
 		BufferedReader br = new BufferedReader(new InputStreamReader(new ClassPathResource("a.csv").getInputStream()));
         String line;
         int mcount4 =0;// 지속시간
@@ -70,18 +73,14 @@ public class HomeController {
             aLine = Arrays.asList(lineArr);
             String[] day =lineArr[0].split(" ");
             int time =Integer.parseInt(day[1]);
+            
             if (!aLine.get(3).isEmpty() && !aLine.get(4).isEmpty()) {
                 pm10 += Integer.parseInt(aLine.get(3));
                 pm25 += Integer.parseInt(aLine.get(4));
                 pm10 /= time;
                 pm25 /= time;
             } else {
-                System.out.println("측정소(구별): " + aLine.get(1) + ", 경보 단계: 측정소 점검 , 발령 시간: " + aLine.get(0));
-                AlertDTO ad = new AlertDTO();
-                ad.setLocation(aLine.get(1));
-                ad.setAlert_check("측정소 점검");
-                ad.setTime(aLine.get(0));
-                dao.getInsertAlert(ad);
+               send(aLine.get(1),0,aLine.get(0),"측정소 점검");
                 continue;
             }   
             
@@ -114,60 +113,59 @@ public class HomeController {
             // 연속 시간이 2시간 이상인 경우 주의보 발령
             if (mcount4 >= 2 && ccount3 <2 && ccount1 <2 && mcount2 <2) {
                 mGrade=4;
-                System.out.println("측정소(구별): " + aLine.get(1) + ", 경보 단계: " + mGrade  + ", 발령 시간: " + aLine.get(0)+time);
-                System.out.println(day[1] + time + "pm10 : " + pm10+" " +Integer.parseInt(aLine.get(3)) + " pm2.5 : " + pm25+" "+ Integer.parseInt(aLine.get(4)));
-
-                AlertDTO ad= new AlertDTO();
-                ad.setLocation(aLine.get(1));
-                ad.setGrade(mGrade);
-                ad.setTime( aLine.get(0));
-                ad.setAlert_check("");
-                dao.getInsertAlert(ad);
+                send(aLine.get(1),mGrade,aLine.get(0),"");
             }
            else if (mcount2 >= 2 && ccount1<2) {
                 mGrade=2;
-                System.out.println("측정소(구별): " + aLine.get(1) + ", 경보 단계: " + mGrade  + ", 발령 시간: " + aLine.get(0) +time);
-                System.out.println(day[1] + time + "pm10 : " + pm10+" " +Integer.parseInt(aLine.get(3)) + " pm2.5 : " + pm25+" "+ Integer.parseInt(aLine.get(4)));
-
-                AlertDTO ad= new AlertDTO();
-                ad.setLocation(aLine.get(1));
-                ad.setGrade(mGrade);
-                ad.setTime( aLine.get(0));
-                ad.setAlert_check("");
-                dao.getInsertAlert(ad);
+                send(aLine.get(1),mGrade,aLine.get(0),"");
+               
             }
 
            else if (ccount3 >= 2 && mcount2 < 2 && ccount1 < 2) {
                 cGrade=3;
-                System.out.println("측정소(구별): " + aLine.get(1) + ", 경보 단계: " + cGrade  + ", 발령 시간: " + aLine.get(0)+time);
-                System.out.println(day[1] + time + "pm10 : " + pm10+" " +Integer.parseInt(aLine.get(3)) + " pm2.5 : " + pm25+" "+ Integer.parseInt(aLine.get(4)));
-
-                AlertDTO ad= new AlertDTO();
-                ad.setLocation(aLine.get(1));
-                ad.setGrade(cGrade);
-                ad.setTime( aLine.get(0));
-                ad.setAlert_check("");
-                dao.getInsertAlert(ad);
+                send(aLine.get(1),cGrade,aLine.get(0),"");
+              
             }
           else if (ccount1 >= 2) {
                 cGrade=1;
-               System.out.println("측정소(구별): " + aLine.get(1) + ", 경보 단계: " + cGrade  + ", 발령 시간: " + aLine.get(0)+time);
-               System.out.println(day[1] + time + "pm10 : " + pm10+" " +Integer.parseInt(aLine.get(3)) + " pm2.5 : " + pm25+" "+ Integer.parseInt(aLine.get(4)));
-
-               AlertDTO ad= new AlertDTO();
-                ad.setLocation(aLine.get(1));
-                ad.setGrade(cGrade);
-                ad.setTime( aLine.get(0));
-                ad.setAlert_check("");
-                dao.getInsertAlert(ad);
-           }
+                send(aLine.get(1),cGrade,aLine.get(0),"");
+            
+          }
           else {
               continue;
             }
         }
+   
+      
+		}catch (Exception e) {
+			// TODO: handle exception
+		}finally {
+            // 소켓과 PrintWriter 닫기
+            if (pw != null) {
+                pw.close();
+            }
+            if (socket != null) {
+                socket.close();
+            }
+        }
+	     System.out.println("끝");
 		return "home";
 	}
-	
+	public void send(String location, int grade, String time, String check) throws Exception{
+		
+		String mess="측정소(구별): "+location+ ", 경보 단계: " +grade+ ", 발령 시간: " +time+" "+check;
+      	pw.println(mess);
+      	pw.flush();
+      	
+		AlertDTO ad= new AlertDTO();
+          ad.setLocation(location);
+          ad.setGrade(grade);
+          ad.setTime(time);
+          ad.setAlert_check(check);
+          dao.getInsertAlert(ad);
+		 
+	}
+
 	
 	
 
